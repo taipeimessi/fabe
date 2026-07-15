@@ -776,25 +776,40 @@
     </div>
 </div>
 
-<!-- 1. 載入 Firebase 核心 SDK (請放在 </body> 標籤之前) -->
+<!-- Firebase SDK：使用同一版本的 compat 寫法 -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
 
-<!-- 2. 這是你的初始化設定檔，請建立一個名為 firebase-init.js 的檔案放進去 -->
-<script src="firebase-init.js"></script>
 <script>
-    const appId = 'fabe-sales-challenge';
+    const firebaseConfig = {
+        apiKey: "AIzaSyBclIEMW3BAP7EhRA3LERq7tX5Xyvx46Tw",
+        authDomain: "fabe-648d0.firebaseapp.com",
+        projectId: "fabe-648d0",
+        storageBucket: "fabe-648d0.firebasestorage.app",
+        messagingSenderId: "527188546182",
+        appId: "1:527188546182:web:aa41d1e3952a73728cf707",
+        measurementId: "G-7SJ142YF1W"
+    };
 
-    let app, auth, db;
+    const appId = 'fabe-sales-challenge';
+    let firebaseApp = null;
+    let auth = null;
+    let db = null;
+
     try {
-        app = firebase.app();
+        firebaseApp = firebase.apps.length
+            ? firebase.app()
+            : firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
         db = firebase.firestore();
-        console.log("Firebase Auth 與 Firestore 初始化成功");
+        try { firebase.analytics(); } catch (analyticsError) {
+            console.warn("Analytics 無法啟用，但不影響資料同步：", analyticsError);
+        }
+        console.log("Firebase 初始化成功");
     } catch (e) {
-        console.error("Firebase 初始化失敗，請檢查設定", e);
+        console.error("Firebase 初始化失敗，請檢查設定：", e);
     }
 
     // --- Global State & Variables ---
@@ -998,7 +1013,7 @@
             console.error("Auth error:", e);
         }
 
-        auth.onAuthStateChanged((user) => {
+        onAuthStateChanged(auth, (user) => {
             if (user) {
                 window.currentUser = user;
                 setupFirestoreListener();
