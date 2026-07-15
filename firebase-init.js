@@ -1,4 +1,4 @@
-// 注意：這裡不需要 import，直接使用 firebase 全域變數
+// Firebase 初始化：此檔只負責建立一次 Firebase 連線
 const firebaseConfig = {
   apiKey: "AIzaSyBclIEMW3BAP7EhRA3LERq7tX5Xyvx46Tw",
   authDomain: "fabe-648d0.firebaseapp.com",
@@ -9,8 +9,23 @@ const firebaseConfig = {
   measurementId: "G-7SJ142YF1W"
 };
 
-// 使用 firebase.initializeApp
-const app = firebase.initializeApp(firebaseConfig);
-const analytics = firebase.analytics();
+try {
+  // 避免 Firebase 被重複初始化
+  window.firebaseApp = firebase.apps.length
+    ? firebase.app()
+    : firebase.initializeApp(firebaseConfig);
 
-console.log("Firebase 初始化成功！");
+  window.firebaseAuth = firebase.auth();
+  window.firebaseDb = firebase.firestore();
+
+  // Analytics 失敗不應影響 Firestore
+  try {
+    window.firebaseAnalytics = firebase.analytics();
+  } catch (analyticsError) {
+    console.warn("Firebase Analytics 未啟用：", analyticsError);
+  }
+
+  console.log("Firebase 初始化成功");
+} catch (error) {
+  console.error("Firebase 初始化失敗：", error);
+}
