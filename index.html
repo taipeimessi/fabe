@@ -776,28 +776,13 @@
     </div>
 </div>
 
-<script type="module">
-    // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+<!-- 1. 載入 Firebase 核心 SDK (請放在 </body> 標籤之前) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBclIEMW3BAP7EhRA3LERq7tX5Xyvx46Tw",
-  authDomain: "fabe-648d0.firebaseapp.com",
-  projectId: "fabe-648d0",
-  storageBucket: "fabe-648d0.firebasestorage.app",
-  messagingSenderId: "527188546182",
-  appId: "1:527188546182:web:aa41d1e3952a73728cf707",
-  measurementId: "G-7SJ142YF1W"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+<!-- 2. 這是你的初始化設定檔，請建立一個名為 firebase-init.js 的檔案放進去 -->
+<script src="firebase-init.js"></script>
     
     const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : fallbackConfig;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'fabe-sales-challenge';
