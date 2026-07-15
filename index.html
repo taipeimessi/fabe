@@ -1001,24 +1001,43 @@
 
     // --- Firebase Initialization & Sync ---
     window.initData = async function() {
-        if (!auth) return;
-        
+        if (!auth || !db) {
+            console.error("Firebase Auth 或 Firestore 尚未初始化");
+            window.customAlert(
+                "Firebase 初始化失敗，請稍後重新整理頁面。",
+                "連線失敗",
+                true
+            );
+            return;
+        }
+
+        // compat SDK 必須使用 auth.onAuthStateChanged(...)，
+        // 不能使用模組化寫法 onAuthStateChanged(auth, ...)。
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                window.currentUser = user;
+                setupFirestoreListener();
+            }
+        });
+
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await auth.signInWithCustomToken(__initial_auth_token);
             } else {
                 await auth.signInAnonymously();
             }
-        } catch(e) {
+        } catch (e) {
             console.error("Auth error:", e);
-        }
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.currentUser = user;
-                setupFirestoreListener();
+            let message = "Firebase 登入失敗，請稍後再試。";
+            if (e && e.code === "auth/configuration-not-found") {
+                message = "Firebase Authentication 尚未啟用。請到 Firebase Console 的 Authentication 啟用匿名登入。";
+            } else if (e && e.code === "auth/operation-not-allowed") {
+                message = "Firebase 尚未允許匿名登入。請到 Authentication → Sign-in method 啟用 Anonymous。";
             }
-        });
+
+            window.customAlert(message, "Firebase 連線失敗", true);
+        }
     };
 
     function setupFirestoreListener() {
