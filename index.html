@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MacBook Neo - FABE Sales Challenge 抽卡系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'SF Pro Display', 'PingFang TC', 'Heiti TC', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#0071e3', /* Premium Apple Blue */
+                            dark: '#1d1d1f', /* Premium Coal */
+                            lightGray: '#f5f5f7',
+                            silver: '#86868b',
+                            gold: '#b4926c'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Premium Glassmorphism & Custom scrollbar */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .dark-glass-panel {
+            background: rgba(29, 29, 31, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* 3D Card Animation */
+        .card-container {
+            perspective: 1000px;
+        }
+        .card-inner {
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+        .card-flipped {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+
+        /* Shuffle card anim */
+        @keyframes shuffle-1 {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-80px, -20px) rotate(-10deg); z-index: 50; }
+            50% { transform: translate(80px, 15px) rotate(8deg); z-index: 10; }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        @keyframes shuffle-2 {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            30% { transform: translate(90px, -15px) rotate(12deg); z-index: 50; }
+            60% { transform: translate(-70px, 20px) rotate(-6deg); z-index: 10; }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .animate-shuffle-left {
+            animation: shuffle-1 0.7s ease-in-out infinite;
+        }
+        .animate-shuffle-right {
+            animation: shuffle-2 0.7s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-[#f5f5f7] text-brand-dark min-h-screen font-sans flex flex-col transition-all duration-300 antialiased">
+
+<header class="glass-panel border-b border-gray-200/80 sticky top-0 z-40 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+        <!-- Brand Title -->
+        <div class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('home')">
+            <span class="text-xl text-brand-dark font-semibold tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-laptop text-2xl text-brand-blue"></i>
+                <span>MacBook Neo Challenge</span>
+            </span>
+            <span class="bg-blue-50 text-brand-blue px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide">FABE 銷售訓練系統</span>
+        </div>
+
+        <!-- Right Tools -->
+        <div class="flex items-center gap-4 flex-wrap">
+            <!-- Data Sync Status -->
+            <div id="header-sync-status" class="hidden items-center gap-1.5 text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full text-[10px] font-bold">
+                <i class="fa-solid fa-cloud-check"></i> 已連線
+            </div>
+
+            <!-- Timer Widget in Header -->
+            <div id="header-timer-widget" class="hidden items-center gap-2 bg-rose-50 border border-rose-100 text-rose-600 px-3 py-1.5 rounded-full text-xs font-semibold">
+                <i class="fa-regular fa-clock animate-pulse"></i>
+                <span id="header-timer-txt">08:00</span>
+            </div>
+
+            <!-- Home Switcher -->
+            <button onclick="navigateTo('home')" class="hover:bg-gray-100 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 transition-colors flex items-center gap-1">
+                <i class="fa-solid fa-house"></i>
+                <span>回首頁入口</span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col justify-start relative">
+    
+    <!-- Toast notifications -->
+    <div id="custom-toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="dark-glass-panel text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3">
+            <span id="toast-icon" class="text-xl text-yellow-400">✨</span>
+            <p id="toast-message" class="text-sm font-medium"></p>
+        </div>
+    </div>
+
+    <!-- Alert Modal Box -->
+    <div id="custom-alert-box" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-xl mx-auto" id="alert-box-icon">
+                <i class="fa-solid fa-circle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold" id="alert-box-title">系統提示</h3>
+            <p class="text-sm text-gray-500 leading-relaxed" id="alert-box-message"></p>
+            <button onclick="closeAlert()" class="w-full bg-brand-dark hover:bg-black text-white font-semibold py-2.5 rounded-xl text-sm transition-all">
+                確認
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal Box -->
+    <div id="custom-confirm-box" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="w-12 h-12 bg-blue-50 text-brand-blue rounded-full flex items-center justify-center text-xl mx-auto">
+                <i class="fa-solid fa-question"></i>
+            </div>
+            <h3 class="text-lg font-bold">確認執行此操作？</h3>
+            <p class="text-sm text-gray-500 leading-relaxed" id="confirm-box-message"></p>
+            <div class="grid grid-cols-2 gap-3">
+                <button id="btn-confirm-cancel" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-sm transition-all">
+                    取消
+                </button>
+                <button id="btn-confirm-yes" class="bg-brand-blue hover:bg-blue-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-all">
+                    確認
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Prompt Modal -->
+    <div id="password-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center text-xl mx-auto mb-2">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="text-lg font-bold">教師觀察權限驗證</h3>
+                <p class="text-xs text-gray-400">請輸入教師專屬通行密碼以進入管理大廳</p>
+            </div>
+            <div class="space-y-3">
+                <input type="password" id="teacher-pwd-input" placeholder="請輸入密碼..." class="w-full px-4 py-2.5 text-center bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue text-sm transition-all">
+                <p id="password-error-txt" class="text-xs text-rose-500 text-center hidden font-semibold">❌ 密碼錯誤，請重新輸入！</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button onclick="closePasswordModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 rounded-xl text-sm transition-all">
+                    返回
+                </button>
+                <button onclick="submitTeacherPassword()" class="bg-brand-dark hover:bg-black text-white font-semibold py-2 rounded-xl text-sm transition-all">
+                    驗證進入
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-home" class="view-pane flex flex-col items-center justify-center py-12 md:py-20 text-center">
+        <div class="max-w-2xl mx-auto space-y-8">
+            <div class="space-y-4">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-50 rounded-3xl text-brand-blue text-4xl mb-2">
+                    <i class="fa-solid fa-laptop-code"></i>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight text-brand-dark">MacBook Neo<br><span class="text-brand-blue font-bold text-2xl md:text-3xl">FABE Sales Challenge</span></h1>
+                <p class="text-sm md:text-base text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
+                    實時抽取 MacBook Neo 規格亮點。引導學員精準操練 Feature、Advantage、Benefit、Evidence 完美銷售架構！
+                </p>
+            </div>
+
+            <!-- Double Entrances -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-lg mx-auto pt-4">
+                <!-- Student Entrance -->
+                <button onclick="enterStudentEntrance()" class="glass-panel hover:bg-white hover:-translate-y-1 group border-2 border-slate-100 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="w-12 h-12 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center text-xl text-brand-blue transition-all">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </span>
+                        <i class="fa-solid fa-arrow-right text-gray-300 group-hover:text-brand-blue group-hover:translate-x-1 transition-all"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-1">👨‍🎓 學生入口</h3>
+                    <p class="text-xs text-gray-400">選擇我的組別、查看今日抽中規格並在線上撰寫雙份 FABE 報告提交。</p>
+                </button>
+
+                <!-- Teacher Entrance -->
+                <button onclick="openPasswordModal()" class="glass-panel hover:bg-white hover:-translate-y-1 group border-2 border-slate-100 rounded-2xl p-6 text-left shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="w-12 h-12 rounded-xl bg-gray-100 group-hover:bg-slate-200 flex items-center justify-center text-xl text-gray-600 transition-all">
+                            <i class="fa-solid fa-chalkboard-user"></i>
+                        </span>
+                        <i class="fa-solid fa-lock text-gray-300 group-hover:text-brand-dark group-hover:translate-x-1 transition-all"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-1">👩‍🏫 老師控制塔</h3>
+                    <p class="text-xs text-gray-400">輸入專屬密碼，設定組別、控制抽籤、掌控討論計時、審查學生成果及規格卡管理。</p>
+                </button>
+            </div>
+            
+            <div class="text-xs text-gray-400 pt-8">
+                預載 20 種 MacBook Neo 精選旗艦規格特徵，開箱即玩！(已啟用 Firebase 即時同步)
+            </div>
+        </div>
+    </div>
+
+    <div id="view-student-select" class="view-pane hidden space-y-8 max-w-lg mx-auto py-12">
+        <div class="text-center space-y-2">
+            <h2 class="text-2xl font-bold">歡迎加入 MacBook Neo 銷售挑戰</h2>
+            <p class="text-xs text-gray-400">請先點選您所在的組別，以讀取小組抽卡題目</p>
+        </div>
+
+        <div class="glass-panel rounded-2xl p-6 shadow-lg space-y-4">
+            <label class="block text-sm font-semibold text-gray-600">選擇我的小組</label>
+            <select id="student-group-dropdown" class="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue font-bold text-sm">
+                <!-- Injected dynamically -->
+            </select>
+
+            <button onclick="enterStudentWorkspace()" class="w-full bg-brand-blue hover:bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2">
+                進入小組工作區 <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="view-student-workspace" class="view-pane hidden space-y-8">
+        <!-- Student Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4 border-gray-200">
+            <div>
+                <button onclick="navigateTo('student-select')" class="text-brand-blue text-xs font-semibold hover:underline flex items-center gap-1">
+                    <i class="fa-solid fa-chevron-left"></i> 重選組別
+                </button>
+                <h2 class="text-2xl font-bold mt-1 text-brand-dark flex items-center gap-2">
+                    <span id="st-group-title" class="text-brand-blue">-- 組</span> 
+                    <span class="text-sm font-normal text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">學生寫作模式</span>
+                </h2>
+            </div>
+            
+            <div id="st-submit-status-badge" class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500">
+                讀取中...
+            </div>
+        </div>
+
+        <!-- If group has not drawn cards yet -->
+        <div id="st-not-drawn-screen" class="hidden text-center py-20 bg-white rounded-3xl border shadow-sm max-w-xl mx-auto space-y-4">
+            <div class="text-5xl text-slate-300">⏳</div>
+            <h3 class="text-xl font-bold text-gray-700">老師尚未為您的組別進行抽卡</h3>
+            <p class="text-xs text-gray-400 max-w-sm mx-auto">
+                請靜待老師控制台進行抽籤分配。抽籤完成後，系統會即時自動更新您的小組工作區顯示雙重規格特徵題目！
+            </p>
+        </div>
+
+        <!-- Active Workspace with Dual Cards and Dual FABE -->
+        <div id="st-active-workspace" class="hidden space-y-8">
+            
+            <!-- Dual Card Display Container -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-nodes text-brand-blue"></i> 本組今日 MacBook Neo 抽中規格特徵 💡
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    <!-- Card 1 -->
+                    <div class="card-container h-[200px] cursor-pointer" onclick="flipCard('st-c1-inner')">
+                        <div class="card-inner w-full h-full relative duration-700" id="st-c1-inner">
+                            <div class="card-front absolute inset-0 glass-panel border border-blue-200 rounded-2xl p-6 shadow flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start">
+                                        <span class="bg-blue-100 text-brand-blue text-[10px] font-bold px-2 py-0.5 rounded-full">FEATURE 1</span>
+                                        <span id="st-f1-cat" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-medium"></span>
+                                    </div>
+                                    <h4 id="st-f1-title" class="text-lg font-bold mt-4 text-brand-dark"></h4>
+                                    <p id="st-f1-desc" class="text-xs text-gray-400 mt-2 leading-relaxed"></p>
+                                </div>
+                                <div class="text-[10px] text-gray-300 italic text-right">點擊可翻轉卡牌</div>
+                            </div>
+                            <div class="card-back absolute inset-0 bg-gradient-to-br from-brand-blue to-blue-700 rounded-2xl p-6 shadow flex flex-col items-center justify-center text-white text-center">
+                                <i class="fa-solid fa-microchip text-3xl mb-2 opacity-80"></i>
+                                <span class="text-sm font-bold">MacBook Neo 專屬規格特色一</span>
+                                <span class="text-[10px] opacity-75 mt-1">點擊以翻面檢視</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="card-container h-[200px] cursor-pointer" onclick="flipCard('st-c2-inner')">
+                        <div class="card-inner w-full h-full relative duration-700" id="st-c2-inner">
+                            <div class="card-front absolute inset-0 glass-panel border border-indigo-200 rounded-2xl p-6 shadow flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start">
+                                        <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full">FEATURE 2</span>
+                                        <span id="st-f2-cat" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-medium"></span>
+                                    </div>
+                                    <h4 id="st-f2-title" class="text-lg font-bold mt-4 text-brand-dark"></h4>
+                                    <p id="st-f2-desc" class="text-xs text-gray-400 mt-2 leading-relaxed"></p>
+                                </div>
+                                <div class="text-[10px] text-gray-300 italic text-right">點擊可翻轉卡牌</div>
+                            </div>
+                            <div class="card-back absolute inset-0 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-6 shadow flex flex-col items-center justify-center text-white text-center">
+                                <i class="fa-solid fa-bolt text-3xl mb-2 opacity-80"></i>
+                                <span class="text-sm font-bold">MacBook Neo 專屬規格特色二</span>
+                                <span class="text-[10px] opacity-75 mt-1">點擊以翻面檢視</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Double FABE Sheets -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- FABE Sheet 1 -->
+                <div class="glass-panel rounded-3xl p-6 shadow-sm border border-blue-100/50 space-y-4">
+                    <div class="border-b pb-2">
+                        <span class="text-[10px] font-bold text-brand-blue bg-blue-50 px-2 py-0.5 rounded">挑戰 1</span>
+                        <h3 class="text-base font-bold mt-1 text-gray-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-square-poll-horizontal text-brand-blue"></i> 
+                            針對：<span id="fabe1-spec-title" class="text-brand-blue"></span>
+                        </h3>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- F -->
+                        <div class="bg-rose-50/40 p-3.5 rounded-xl border border-rose-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-rose-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-rose-500 text-white flex items-center justify-center font-mono text-[10px]">F</span>
+                                <span>Feature (產品特點)</span>
+                            </label>
+                            <textarea id="st-fabe1-f" oninput="autoSaveStudentInput()" placeholder="填入抽到的產品特色..." class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-rose-200 focus:outline-none focus:ring-1 focus:ring-rose-500 transition-all"></textarea>
+                        </div>
+                        <!-- A -->
+                        <div class="bg-amber-50/40 p-3.5 rounded-xl border border-amber-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-amber-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-amber-500 text-white flex items-center justify-center font-mono text-[10px]">A</span>
+                                <span>Advantage (產品優勢)</span>
+                            </label>
+                            <textarea id="st-fabe1-a" oninput="autoSaveStudentInput()" placeholder="此特點物理上、效能上有何勝過他牌的卓越優勢？" class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-amber-200 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all"></textarea>
+                        </div>
+                        <!-- B -->
+                        <div class="bg-emerald-50/40 p-3.5 rounded-xl border border-emerald-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-emerald-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-emerald-500 text-white flex items-center justify-center font-mono text-[10px]">B</span>
+                                <span>Benefit (顧客利益)</span>
+                            </label>
+                            <textarea id="st-fabe1-b" oninput="autoSaveStudentInput()" placeholder="對消費者的實際使用情境、情緒、成本帶來什麼實質好處？" class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-emerald-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"></textarea>
+                        </div>
+                        <!-- E -->
+                        <div class="bg-sky-50/40 p-3.5 rounded-xl border border-sky-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-sky-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-sky-500 text-white flex items-center justify-center font-mono text-[10px]">E</span>
+                                <span>Evidence (客觀證據)</span>
+                            </label>
+                            <textarea id="st-fabe1-e" oninput="autoSaveStudentInput()" placeholder="有哪些權威實測、數據、證言、現場Demo可以支持此說法？" class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-sky-200 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FABE Sheet 2 -->
+                <div class="glass-panel rounded-3xl p-6 shadow-sm border border-indigo-100/50 space-y-4">
+                    <div class="border-b pb-2">
+                        <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">挑戰 2</span>
+                        <h3 class="text-base font-bold mt-1 text-gray-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-square-poll-horizontal text-indigo-700"></i> 
+                            針對：<span id="fabe2-spec-title" class="text-indigo-700"></span>
+                        </h3>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- F -->
+                        <div class="bg-rose-50/40 p-3.5 rounded-xl border border-rose-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-rose-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-rose-500 text-white flex items-center justify-center font-mono text-[10px]">F</span>
+                                <span>Feature (產品特點)</span>
+                            </label>
+                            <textarea id="st-fabe2-f" oninput="autoSaveStudentInput()" placeholder="填入抽到的產品特色..." class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-rose-200 focus:outline-none focus:ring-1 focus:ring-rose-500 transition-all"></textarea>
+                        </div>
+                        <!-- A -->
+                        <div class="bg-amber-50/40 p-3.5 rounded-xl border border-amber-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-amber-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-amber-500 text-white flex items-center justify-center font-mono text-[10px]">A</span>
+                                <span>Advantage (產品優勢)</span>
+                            </label>
+                            <textarea id="st-fabe2-a" oninput="autoSaveStudentInput()" placeholder="此特點物理上、效能上有何勝過他牌的卓越優勢？" class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-amber-200 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all"></textarea>
+                        </div>
+                        <!-- B -->
+                        <div class="bg-emerald-50/40 p-3.5 rounded-xl border border-emerald-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-emerald-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-emerald-500 text-white flex items-center justify-center font-mono text-[10px]">B</span>
+                                <span>Benefit (顧客利益)</span>
+                            </label>
+                            <textarea id="st-fabe2-b" oninput="autoSaveStudentInput()" placeholder="對消費者的實際使用情境、情緒、成本帶來什麼實質好處？" class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-emerald-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all"></textarea>
+                        </div>
+                        <!-- E -->
+                        <div class="bg-sky-50/40 p-3.5 rounded-xl border border-sky-100/60 space-y-1">
+                            <label class="flex items-center gap-1.5 text-sky-700 font-bold text-xs">
+                                <span class="w-5 h-5 rounded bg-sky-500 text-white flex items-center justify-center font-mono text-[10px]">E</span>
+                                <span>Evidence (客觀證據)</span>
+                            </label>
+                            <textarea id="st-fabe2-e" oninput="autoSaveStudentInput()" placeholder="有哪些權威實測、數據、證言、現場Demo可以支持此說法？" class="w-full h-16 p-2 text-xs bg-white rounded-lg border border-sky-200 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Submit Panel -->
+            <div class="flex items-center justify-between bg-white p-4 rounded-2xl border">
+                <span class="text-xs text-slate-400">系統即時自動存檔，點擊提交後老師端將可立即閱覽！</span>
+                <button onclick="submitStudentAnswers()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> 提交解答給老師
+                </button>
+            </div>
+
+            <!-- Interactive FABE Reminder Guide for students -->
+            <div class="glass-panel rounded-3xl p-5 shadow-sm space-y-3">
+                <h4 class="text-xs font-bold text-gray-500 flex items-center justify-between">
+                    <span>💡 FABE 銷售簡報思考框架</span>
+                    <span class="text-[9px] text-brand-blue font-bold bg-blue-50 px-2 py-0.5 rounded">快速回顧</span>
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                    <div class="p-3 bg-rose-50/40 rounded-xl border border-rose-100">
+                        <p class="font-bold text-rose-700">F - 特點 (Feature)</p>
+                        <p class="text-[11px] text-gray-400 mt-1">客觀基礎。回答客戶「這是什麼？」例如：採用最新 M4 晶片。</p>
+                    </div>
+                    <div class="p-3 bg-amber-50/40 rounded-xl border border-amber-100">
+                        <p class="font-bold text-amber-700">A - 優勢 (Advantage)</p>
+                        <p class="text-[11px] text-gray-400 mt-1">運作優點。回答客戶「它能發揮什麼效果？」例如：運作速度比競品快3倍。</p>
+                    </div>
+                    <div class="p-3 bg-emerald-50/40 rounded-xl border border-emerald-100">
+                        <p class="font-bold text-emerald-700">B - 利益 (Benefit)</p>
+                        <p class="text-[11px] text-gray-400 mt-1"><b>最關鍵！</b>感性好處。回答客戶「與我有何關係？」例如：為你每天省下1小時下班。</p>
+                    </div>
+                    <div class="p-3 bg-sky-50/40 rounded-xl border border-sky-100">
+                        <p class="font-bold text-sky-700">E - 證據 (Evidence)</p>
+                        <p class="text-[11px] text-gray-400 mt-1">客觀佐證。回答客戶「你沒騙我吧？」例如：實測跑分圖表或官網20小時數據。</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="view-teacher-workspace" class="view-pane hidden space-y-8">
+        
+        <!-- Teacher Title -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-gray-200">
+            <div>
+                <h2 class="text-2xl font-bold tracking-tight text-brand-dark flex items-center gap-2">
+                    <i class="fa-solid fa-chalkboard-user text-brand-blue"></i>
+                    <span>👩‍🏫 老師控制塔</span>
+                </h2>
+                <p class="text-xs text-gray-400 mt-1">掌控全場組別設定、即時投影抽籤、實時審查學生成果及卡庫管理</p>
+            </div>
+            
+            <!-- Tab switches inside dashboard -->
+            <div class="flex items-center gap-2 bg-gray-100 p-1.5 rounded-xl border">
+                <button onclick="switchTeacherTab('setup-draw')" id="btn-t-tab-setup-draw" class="bg-white text-brand-dark px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-gamepad"></i> 1. 設定與抽籤
+                </button>
+                <button onclick="switchTeacherTab('submissions')" id="btn-t-tab-submissions" class="text-gray-500 hover:text-brand-dark px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check"></i> 2. 審查學生成果
+                </button>
+                <button onclick="switchTeacherTab('cards-editor')" id="btn-t-tab-cards-editor" class="text-gray-500 hover:text-brand-dark px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-database"></i> 3. 規格卡管理
+                </button>
+            </div>
+        </div>
+
+        <!-- SUB-PANEL 1: SETUP & DRAW -->
+        <div id="t-panel-setup-draw" class="space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Group config -->
+                <div class="glass-panel rounded-2xl p-6 shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold border-b pb-2 flex items-center justify-between">
+                        <span>👥 組別編制管理</span>
+                        <button onclick="addNewGroup()" class="bg-brand-blue hover:bg-blue-600 text-white px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> 新增組
+                        </button>
+                    </h3>
+                    
+                    <div class="flex gap-1 flex-wrap pb-1">
+                        <button onclick="setupQuickGroups(4)" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-[10px] font-bold rounded text-gray-600">4 組</button>
+                        <button onclick="setupQuickGroups(6)" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-[10px] font-bold rounded text-gray-600">6 組</button>
+                        <button onclick="setupQuickGroups(8)" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-[10px] font-bold rounded text-gray-600">8 組</button>
+                    </div>
+
+                    <div id="group-editor-container" class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                        <!-- Dynamically populated group config rows -->
+                    </div>
+
+                    <div class="space-y-2 border-t pt-3">
+                        <label class="block text-xs font-bold text-gray-600">不重複規格規則設定</label>
+                        <div class="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border text-xs">
+                            <span class="text-[11px] text-gray-400">允許各組抽到重複的 Feature 卡？</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="set-dup-features" class="sr-only peer" onchange="toggleDupFeaturesSetting()">
+                                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-blue"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drawing Board (Projection optimized) -->
+                <div class="lg:col-span-2 glass-panel rounded-3xl p-6 md:p-8 shadow-sm flex flex-col justify-between min-h-[360px] border border-blue-50 relative overflow-hidden">
+                    
+                    <!-- Quick select header inside draw -->
+                    <div class="flex justify-between items-center border-b pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-400">當前抽籤：</span>
+                            <span id="current-group-badge-name" class="font-bold text-brand-blue bg-blue-50 px-2.5 py-1 rounded text-xs">--</span>
+                        </div>
+                        <div id="play-group-tabs" class="flex gap-1 overflow-x-auto max-w-[200px] sm:max-w-[320px]">
+                            <!-- Group pills dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Middle Area: Shuffle / Results -->
+                    <div class="py-8 flex flex-col items-center">
+                        
+                        <!-- SHUFFLING ANIMS -->
+                        <div id="shuffle-animation-deck" class="hidden relative w-36 h-48 my-4">
+                            <div class="absolute inset-0 bg-gradient-to-br from-brand-blue to-indigo-600 rounded-2xl shadow transform rotate-3 animate-shuffle-left flex items-center justify-center text-white text-xl">🖥️</div>
+                            <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-indigo-800 rounded-2xl shadow transform -rotate-3 animate-shuffle-right flex items-center justify-center text-white text-xl">💡</div>
+                            <div class="absolute inset-0 bg-brand-dark rounded-2xl shadow border border-white/20 flex items-center justify-center text-white text-2xl">
+                                <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i>
+                            </div>
+                        </div>
+
+                        <!-- UNOPENED DECK -->
+                        <div id="deck-unopened" class="flex flex-col items-center">
+                            <button onclick="executeDraw()" class="w-40 h-52 bg-gradient-to-br from-brand-dark to-slate-800 rounded-2xl shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 flex flex-col items-center justify-center text-white p-4 relative group">
+                                <div class="absolute inset-0 bg-white/5 opacity-10 rounded-2xl transition-opacity group-hover:opacity-0"></div>
+                                <span class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg mb-3"><i class="fa-solid fa-laptop"></i></span>
+                                <h4 class="text-sm font-bold">按此啟動抽卡</h4>
+                                <p class="text-[10px] text-gray-400 mt-2 text-center px-2">為小組抽取 MacBook Neo 規格特色牌面</p>
+                            </button>
+                        </div>
+
+                        <!-- DRAWN RESULTS (Projector Size Dual Cards) -->
+                        <div id="deck-opened" class="hidden w-full space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
+                                
+                                <!-- Card Front 1 -->
+                                <div class="glass-panel border-2 border-brand-blue rounded-xl p-4 shadow flex flex-col justify-between h-[150px]">
+                                    <div>
+                                        <span class="bg-blue-100 text-brand-blue text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase">Spec 1</span>
+                                        <h4 id="f1-title" class="text-sm font-bold mt-2 text-brand-dark"></h4>
+                                        <p id="f1-desc" class="text-[11px] text-gray-400 mt-1 line-clamp-3 leading-snug"></p>
+                                    </div>
+                                </div>
+
+                                <!-- Card Front 2 -->
+                                <div class="glass-panel border-2 border-indigo-500 rounded-xl p-4 shadow flex flex-col justify-between h-[150px]">
+                                    <div>
+                                        <span class="bg-indigo-100 text-indigo-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase">Spec 2</span>
+                                        <h4 id="f2-title" class="text-sm font-bold mt-2 text-brand-dark"></h4>
+                                        <p id="f2-desc" class="text-[11px] text-gray-400 mt-1 line-clamp-3 leading-snug"></p>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Lower Controls -->
+                    <div class="flex items-center justify-between border-t pt-3 mt-4 text-xs">
+                        <button onclick="reDrawCurrentGroup()" id="btn-redraw" class="hidden text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded font-semibold transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> 重新抽取
+                        </button>
+
+                        <div class="flex items-center gap-2 ml-auto">
+                            <button onclick="prevGroup()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded font-bold transition-all">
+                                上一組
+                            </button>
+                            <button onclick="nextGroup()" class="bg-brand-dark hover:bg-black text-white px-4 py-1.5 rounded font-bold shadow-sm transition-all flex items-center gap-1">
+                                <span>下一組</span> <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Timer Widget -->
+            <div class="glass-panel rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="space-y-1 text-center md:text-left">
+                    <h4 class="text-sm font-bold flex items-center gap-1.5 justify-center md:justify-start">
+                        <span>⏳ 討論倒數計時器</span>
+                    </h4>
+                    <p class="text-xs text-gray-400">抽完卡片後按開始討論，投影顯示精準的 8 分鐘計時</p>
+                    
+                    <div class="flex items-center gap-2 pt-2">
+                        <span class="text-xs text-gray-500 font-medium">調整時間：</span>
+                        <input type="range" id="set-timer-range" min="1" max="20" value="8" class="accent-brand-blue w-28" oninput="updateTimerLabel(this.value)">
+                        <span id="timer-val-label" class="text-xs font-bold bg-gray-100 px-2 py-0.5 rounded">08:00</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div class="text-4xl font-mono font-bold tracking-tight text-brand-dark" id="arena-timer-txt">
+                        08:00
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <button onclick="toggleTimer()" id="btn-timer-toggle" class="w-10 h-10 rounded-full bg-brand-blue hover:bg-blue-600 text-white flex items-center justify-center text-sm shadow transition-all">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button onclick="resetTimer()" class="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                        <button onclick="adjustTimerMinutes(1)" class="px-2 py-1 text-[10px] bg-white border hover:bg-gray-50 rounded font-bold text-gray-500">+1分</button>
+                        <button onclick="adjustTimerMinutes(-1)" class="px-2 py-1 text-[10px] bg-white border hover:bg-gray-50 rounded font-bold text-gray-500">-1分</button>
+                    </div>
+                </div>
+
+                <div id="alarm-banner" class="hidden text-rose-500 bg-rose-50 border border-rose-100 text-xs py-2 px-4 rounded-xl font-bold animate-bounce text-center">
+                    🎉 時間到！請各小組停止討論，準備開始進行銷售演練！
+                </div>
+            </div>
+        </div>
+
+        <div id="t-panel-submissions" class="space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold flex items-center gap-1.5"><i class="fa-solid fa-list-check text-brand-blue"></i> 學生成果提交即時看板</h3>
+                <button onclick="triggerResetConfirm()" class="text-rose-500 hover:bg-rose-50 px-3 py-1 rounded text-xs font-semibold transition-colors">
+                    <i class="fa-solid fa-trash-can"></i> 重置全體小組成果
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6" id="t-submissions-container">
+                <!-- Submission list dynamically -->
+            </div>
+        </div>
+
+        <div id="t-panel-cards-editor" class="space-y-6 hidden">
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 class="text-sm font-bold flex items-center gap-1.5"><i class="fa-solid fa-database text-brand-blue"></i> MacBook Neo 規格特徵資料庫</h3>
+                    <p class="text-[11px] text-gray-400 mt-0.5">點按文字即可直接就地編輯，滑鼠移開自動即時同步儲存雲端</p>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="restoreDefaultPresets()" class="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-xl text-xs font-semibold hover:bg-amber-100 transition-all">
+                        <i class="fa-solid fa-arrow-rotate-left"></i> 回復預設資料
+                    </button>
+                    <button onclick="triggerJSONBackupDownload()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">
+                        <i class="fa-solid fa-file-export"></i> 下載備份 JSON
+                    </button>
+                    <button onclick="openJSONModal()" class="bg-blue-50 hover:bg-blue-100 text-brand-blue border border-blue-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all">
+                        <i class="fa-solid fa-file-import"></i> 批量 Excel / JSON 匯入
+                    </button>
+                </div>
+            </div>
+
+            <!-- Notion Style Table -->
+            <div class="glass-panel rounded-2xl shadow-sm border overflow-hidden">
+                <div class="flex items-center justify-between p-4 bg-gray-50 border-b">
+                    <h3 class="text-xs font-bold flex items-center gap-1.5"><i class="fa-solid fa-microchip text-brand-blue"></i> 特色功能規格清單</h3>
+                    <button onclick="addNewFeatureCardRow()" class="bg-brand-blue hover:bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full transition-all">
+                        <i class="fa-solid fa-plus"></i> 新增 Feature 卡
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 border-b">
+                                <th class="p-3 font-semibold text-gray-400 w-1/4">特點標題 (Feature)</th>
+                                <th class="p-3 font-semibold text-gray-400 w-2/5">規格細節說明 (用做引導或簡短提示)</th>
+                                <th class="p-3 font-semibold text-gray-400 w-1/6">分類篩選標籤</th>
+                                <th class="p-3 font-semibold text-gray-400 w-1/12 text-center">狀態</th>
+                                <th class="p-3 font-semibold text-gray-400 w-[50px] text-center">刪除</th>
+                            </tr>
+                        </thead>
+                        <tbody id="features-tbody" class="divide-y divide-gray-100">
+                            <!-- Dynamically generated rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+<div id="modal-import" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-2xl rounded-2xl shadow-2xl p-6 space-y-6 flex flex-col max-h-[90vh]">
+        
+        <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-file-arrow-up text-indigo-500"></i> 卡片資料庫批量匯入</h3>
+            <button onclick="closeJSONModal()" class="text-gray-400 hover:text-brand-dark"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+
+        <div class="flex gap-2 border-b">
+            <button onclick="switchImportType('excel')" id="btn-import-tab-excel" class="px-4 py-2 border-b-2 border-brand-blue font-bold text-xs text-brand-blue">貼上 Excel / CSV</button>
+            <button onclick="switchImportType('json')" id="btn-import-tab-json" class="px-4 py-2 font-bold text-xs text-gray-400">JSON 系統備份檔</button>
+        </div>
+
+        <div class="space-y-4 flex-grow overflow-y-auto pr-1">
+            <!-- Excel block -->
+            <div id="import-block-excel" class="space-y-3">
+                <div class="text-xs text-gray-400">
+                    在 Excel 複製規格資料列後直接貼入下方（<b>標題</b> 與 <b>說明/內容</b> 必填，欄位不需表頭標題，直接貼上即可，預設欄位順序為：標題,說明,分類）
+                </div>
+
+                <div class="bg-gray-50 p-3 rounded-lg text-[10px] text-slate-500 leading-relaxed font-mono">
+                    格式範例：欄位間可用「逗號」或「鍵盤 TAB 鍵（即 Excel 直接複製）」隔開。<br>
+                    <span class="text-brand-blue">雙晶片神經網路架構,搭載雙核硬體級神經引擎，AI 運算速度提昇 400%,AI</span>
+                </div>
+
+                <textarea id="import-excel-textarea" placeholder="在此貼上您的 Excel 表格資料，每一列一筆資料..." class="w-full h-40 p-3 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue font-mono"></textarea>
+            </div>
+
+            <!-- JSON block -->
+            <div id="import-block-json" class="space-y-3 hidden">
+                <p class="text-xs text-gray-400">將之前下載的備份 JSON 文字字串貼在此框內即可覆蓋還原卡片庫。</p>
+                <textarea id="import-json-textarea" placeholder="在此貼上備份的 JSON 代碼..." class="w-full h-40 p-3 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue font-mono"></textarea>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t text-xs">
+            <button onclick="closeJSONModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold">取消</button>
+            <button onclick="executeImport()" class="bg-brand-blue hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold shadow-md">確認並立即匯入</button>
+        </div>
+
+    </div>
+</div>
+
+<script type="module">
+    // --- Firebase Imports ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- Firebase Configuration ---
+    // If you plan to host this yourself on GitHub, fill out `fallbackConfig` with your Firebase project details.
+    const fallbackConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : fallbackConfig;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'fabe-sales-challenge';
+    
+    let app, auth, db;
+    try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+    } catch (e) {
+        console.error("Firebase 初始化失敗，請檢查設定", e);
+    }
+
+    // --- Global State & Variables ---
+    window.isDataLoaded = false;
+    window.currentUser = null;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const DEFAULT_FEATURES_DATA = [
+        { id: 'f1', title: 'Neo Core 4 旗艦晶片', desc: '搭載硬體加速光線追蹤技術，圖形處理效能提升 350%，為極致繁重的 3D 與影片算圖而生。', category: '效能', enabled: true },
+        { id: 'f2', title: '24 小時無憂極限續航', desc: '低能耗系統核心，搭配全新矽陽極大容量電池優化，讓您在全天通勤甚至越洋飛行時，依然不需要攜帶充電插頭。', category: '電池', enabled: true },
+        { id: 'f3', title: '系統級 Neo Intelligence 助理', desc: '原生內嵌智慧寫作、通知優先摘要、一鍵圖像移除功能，並在本地運行，提供業界最高層級的隱私防護。', category: 'AI', enabled: true },
+        { id: 'f4', title: 'Liquid Retina XDR Pro 顯示器', desc: '峰值亮度達 1600 尼特，並搭載 120Hz ProMotion 自動適應更新頻率，完美還原影片與修圖細節。', category: '螢幕', enabled: true },
+        { id: 'f5', title: '極致輕巧 1.05 公分羽量機身', desc: '整機採用 100% 航太級再生鋁金屬一體成型打造，輕量化結構，薄度僅 1.05 公分，隨手攜帶零負擔。', category: '外觀', enabled: true },
+        { id: 'f6', title: '跨裝置通用鍵盤控制 (Universal Control)', desc: '免任何設定，滑鼠即可在多部 iPad、Mac 裝置間任意遊走，並可直接拖放、拷貝素材與檔案。', category: '生態系', enabled: true },
+        { id: 'f7', title: '錄音室級定向三麥克風陣列', desc: '高度定向波束成形演算法，能精準去除環境冷氣或背景人聲雜音，通話品質如同錄音室音軌般清澈。', category: '音效', enabled: true },
+        { id: 'f8', title: '1080p 超感光超廣角視訊鏡頭', desc: '配備超大感光元件，搭配晶片影像運算增強，即便在低光源或夜晚咖啡廳使用仍保持面部完美清晰。', category: '硬體', enabled: true },
+        { id: 'f9', title: '一觸安全解鎖感應按鍵 (Touch ID)', desc: '指尖輕按一秒喚醒，自動幫您填入免密碼登入憑證、快速啟用第三方應用，讓資料保護滴水不漏。', category: '安全性', enabled: true },
+        { id: 'f10', title: '零分貝航太級無風扇散熱系統', desc: '採用高效氣流熱學物理傳導，即便在高強度編輯或遊戲下，主機依然保持冰涼，且全程完美零噪音運作。', category: '效能', enabled: true },
+        { id: 'f11', title: '4 組獨立高頻 Thunderbolt 4 埠', desc: '高達 40Gb/s 傳輸速率，一條線搞定多部高畫質外接顯示器顯示與高速固態硬碟連線。', category: '效能', enabled: true },
+        { id: 'f12', title: '杜比空間音訊 6 喇叭系統', desc: '雙振幅力抗對消低音喇叭，營造無與倫比的三維環繞立體音場，讓震撼的電影與音樂充滿整間。', category: '音效', enabled: true },
+        { id: 'f13', title: 'MagSafe 3 磁吸防絆倒充電埠', desc: '支援 30 分鐘閃電快充至 50% 電力，並在意外被拉絆電線時自動分離，保護整台 MacBook Neo 免於摔落。', category: '電池', enabled: true },
+        { id: 'f14', title: '硬體級安全隔離安全晶片 (Secure Enclave)', desc: '完全與外界作業系統隔離的加密專區，實體儲存生物憑證與密鑰，杜絕網頁駭客與病毒的入侵攻擊。', category: '安全性', enabled: true },
+        { id: 'f15', title: '高頻 8.5Gbps 快閃統一記憶體', desc: '最大 64GB 共享記憶體架構，存取延遲極低，同時開幾百個網頁與多個影音剪輯軌道依舊滑順如飛。', category: '效能', enabled: true },
+        { id: 'f16', title: '高強度雙層抗滑防刮玻璃面板', desc: '採用新型防眩光奈米塗層，在大太陽與強光直射的窗邊環境下，依然能清晰舒適地工作。', category: '螢幕', enabled: true },
+        { id: 'f17', title: '巧控防潑水靜音鍵盤與觸控板', desc: '精密力反饋剪刀腳結構，打字手感彈韌無比且全程維持安靜，超大觸控板支援各種全身多指手勢。', category: '硬體', enabled: true },
+        { id: 'f18', title: '終身免費無痛系統更新 (macOS)', desc: '免除繁瑣昂貴的定期訂閱升級，年年免費獲取最先進、更快速、防毒安全且無延遲的系統底層。', category: '生態系', enabled: true },
+        { id: 'f19', title: '手機鏡像桌上即時聯動控制', desc: '可將您的智慧型手機畫面完整鏡像顯示於 MacBook Neo 上，用鍵盤打字回訊甚至在兩端間拖放拖拽。', category: '生態系', enabled: true },
+        { id: 'f20', title: '次世代高速 Wi-Fi 7 無線通訊頻道', desc: '支援高達 320MHz 寬頻譜，在多重干擾環境下能穩定提供快 2.4 倍的下載體驗。', category: '生態系', enabled: true }
+    ];
+
+    let state = {
+        view: 'home',
+        teacherTab: 'setup-draw',
+        groups: [],
+        features: [],
+        settings: {
+            allowDuplicateFeatures: false,
+            timerDuration: 480
+        },
+        activeGroupIndex: 0,
+        selectedStudentGroupId: '',
+        timer: {
+            secondsLeft: 480,
+            intervalId: null,
+            isRunning: false
+        },
+        importType: 'excel'
+    };
+
+    // --- Core Utility Functions ---
+    window.playSound = function(type) {
+        if (!audioCtx) return;
+        try {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const now = audioCtx.currentTime;
+            
+            if (type === 'click') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'shuffle') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(350, now + 0.15);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'reveal') {
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(523.25, now);
+                osc1.frequency.exponentialRampToValueAtTime(783.99, now + 0.25);
+                
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(659.25, now);
+                osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.25);
+                
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.3);
+                osc2.stop(now + 0.3);
+            } else if (type === 'alarm') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(554.37, now + 0.15);
+                osc.frequency.setValueAtTime(659.25, now + 0.3);
+                osc.frequency.setValueAtTime(880, now + 0.45);
+                
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.8);
+            }
+        } catch (e) {
+            console.log("Audio play failed:", e);
+        }
+    };
+
+    let confirmPromiseResolver = null;
+    window.customConfirm = function(message) {
+        return new Promise((resolve) => {
+            const box = document.getElementById('custom-confirm-box');
+            document.getElementById('confirm-box-message').innerText = message;
+            box.classList.remove('hidden');
+            confirmPromiseResolver = resolve;
+        });
+    };
+
+    document.getElementById('btn-confirm-yes').addEventListener('click', () => {
+        document.getElementById('custom-confirm-box').classList.add('hidden');
+        if (confirmPromiseResolver) {
+            confirmPromiseResolver(true);
+            confirmPromiseResolver = null;
+        }
+    });
+
+    document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+        document.getElementById('custom-confirm-box').classList.add('hidden');
+        if (confirmPromiseResolver) {
+            confirmPromiseResolver(false);
+            confirmPromiseResolver = null;
+        }
+    });
+
+    window.customAlert = function(message, title = "系統提示", isError = false) {
+        const box = document.getElementById('custom-alert-box');
+        const icon = document.getElementById('alert-box-icon');
+        const titleEl = document.getElementById('alert-box-title');
+        const msgEl = document.getElementById('alert-box-message');
+
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+        
+        if (isError) {
+            icon.className = "w-12 h-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-xl mx-auto";
+            icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        } else {
+            icon.className = "w-12 h-12 bg-blue-50 text-brand-blue rounded-full flex items-center justify-center text-xl mx-auto";
+            icon.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
+        }
+        box.classList.remove('hidden');
+    };
+
+    window.closeAlert = function() {
+        document.getElementById('custom-alert-box').classList.add('hidden');
+    };
+
+    window.showToast = function(message, icon = "✨") {
+        window.playSound('click');
+        const toast = document.getElementById('custom-toast');
+        document.getElementById('toast-message').innerText = message;
+        document.getElementById('toast-icon').innerText = icon;
+        toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-0 opacity-100 transition-all duration-300 pointer-events-auto";
+        setTimeout(() => {
+            toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none";
+        }, 3000);
+    };
+
+    // --- Firebase Initialization & Sync ---
+    window.initData = async function() {
+        if (!auth) return;
+        
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch(e) {
+            console.error("Auth error:", e);
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUser = user;
+                setupFirestoreListener();
+            }
+        });
+    };
+
+    function setupFirestoreListener() {
+        if (!window.currentUser || !db) return;
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'global');
+        
+        onSnapshot(docRef, (documentSnapshot) => {
+            if (documentSnapshot.exists()) {
+                const data = documentSnapshot.data();
+                state.features = data.features || DEFAULT_FEATURES_DATA;
+                state.settings = data.settings || { allowDuplicateFeatures: false, timerDuration: 480 };
+                state.groups = data.groups || [];
+                state.activeGroupIndex = data.activeGroupIndex || 0;
+                window.isDataLoaded = true;
+
+                // Sync UI without disturbing focused input elements
+                syncUI();
+            } else {
+                // Initialize default database on first run
+                state.features = [...DEFAULT_FEATURES_DATA];
+                state.groups = [
+                    { id: 'g1', name: '第 1 組', features: [], fabe1: { f: '', a: '', b: '', e: '' }, fabe2: { f: '', a: '', b: '', e: '' }, submitted: false, submitTime: "" },
+                    { id: 'g2', name: '第 2 組', features: [], fabe1: { f: '', a: '', b: '', e: '' }, fabe2: { f: '', a: '', b: '', e: '' }, submitted: false, submitTime: "" },
+                    { id: 'g3', name: '第 3 組', features: [], fabe1: { f: '', a: '', b: '', e: '' }, fabe2: { f: '', a: '', b: '', e: '' }, submitted: false, submitTime: "" },
+                    { id: 'g4', name: '第 4 組', features: [], fabe1: { f: '', a: '', b: '', e: '' }, fabe2: { f: '', a: '', b: '', e: '' }, submitted: false, submitTime: "" }
+                ];
+                window.isDataLoaded = true;
+                saveStateToFirebase(true); // Initial save immediate
+            }
+        }, (error) => {
+            console.error("Firestore Listen Error:", error);
+        });
+    }
+
+    let saveTimeout = null;
+    function saveStateToFirebase(immediate = false) {
+        if (!window.currentUser || !db) return;
+        
+        const executeSave = async () => {
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'global');
+            try {
+                await setDoc(docRef, {
+                    features: state.features,
+                    settings: state.settings,
+                    groups: state.groups,
+                    activeGroupIndex: state.activeGroupIndex,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error saving state:", e);
+                window.showToast("同步失敗", "⚠️");
+            }
+        };
+
+        if (immediate) {
+            executeSave();
+        } else {
+            // Debounce to prevent hitting Firestore limits during typing
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => { executeSave(); }, 800);
+        }
+    }
+
+    function syncUI() {
+        document.getElementById('header-sync-status').classList.remove('hidden');
+        document.getElementById('header-sync-status').classList.add('flex');
+
+        if (state.view === 'student-workspace') {
+            checkStudentCardsUpdate(); // Update cards only to avoid text input blur
+        } else if (state.view === 'teacher-workspace') {
+            if (state.teacherTab === 'setup-draw') window.renderTeacherSetupDraw();
+            if (state.teacherTab === 'submissions') window.renderTeacherSubmissions();
+            if (state.teacherTab === 'cards-editor') window.renderCardsEditorTables();
+        } else if (state.view === 'student-select') {
+            window.renderStudentGroupDropdown();
+        }
+    }
+
+    // --- Navigation & Auth ---
+    window.navigateTo = function(viewId) {
+        window.playSound('click');
+        document.querySelectorAll('.view-pane').forEach(el => el.classList.add('hidden'));
+        const targetView = document.getElementById('view-' + viewId);
+        if (targetView) targetView.classList.remove('hidden');
+        state.view = viewId;
+
+        const headerTimer = document.getElementById('header-timer-widget');
+        if (state.timer.isRunning && (viewId === 'teacher-workspace' || viewId === 'student-workspace')) {
+            headerTimer.classList.remove('hidden');
+            headerTimer.classList.add('flex');
+        } else {
+            headerTimer.classList.remove('flex');
+            headerTimer.classList.add('hidden');
+        }
+
+        if (viewId === 'student-select') window.renderStudentGroupDropdown();
+        else if (viewId === 'teacher-workspace') window.switchTeacherTab(state.teacherTab);
+    };
+
+    window.openPasswordModal = function() {
+        if (!window.isDataLoaded) { window.customAlert('系統連線同步中，請稍候...'); return; }
+        window.playSound('click');
+        document.getElementById('teacher-pwd-input').value = '';
+        document.getElementById('password-error-txt').classList.add('hidden');
+        document.getElementById('password-modal').classList.remove('hidden');
+    };
+
+    window.closePasswordModal = function() {
+        window.playSound('click');
+        document.getElementById('password-modal').classList.add('hidden');
+    };
+
+    window.submitTeacherPassword = function() {
+        const pwd = document.getElementById('teacher-pwd-input').value;
+        if (pwd === 'fabe888') {
+            window.closePasswordModal();
+            window.navigateTo('teacher-workspace');
+            window.showToast("解鎖成功！已進入老師控制塔", "👩‍🏫");
+        } else {
+            document.getElementById('password-error-txt').classList.remove('hidden');
+            window.playSound('alarm');
+        }
+    };
+
+    // --- Student Logic ---
+    window.renderStudentGroupDropdown = function() {
+        const dropdown = document.getElementById('student-group-dropdown');
+        dropdown.innerHTML = '';
+        state.groups.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id;
+            opt.innerText = g.name + (g.submitted ? ' (已提交)' : '');
+            dropdown.appendChild(opt);
+        });
+    };
+
+    window.enterStudentEntrance = function() {
+        if (!window.isDataLoaded) { window.customAlert('系統連線同步中，請稍候...'); return; }
+        window.navigateTo('student-select');
+    };
+
+    window.enterStudentWorkspace = function() {
+        const selectId = document.getElementById('student-group-dropdown').value;
+        if (!selectId) {
+            window.customAlert("請先建立組別設定！", "無法進入", true);
+            return;
+        }
+        state.selectedStudentGroupId = selectId;
+        window.navigateTo('student-workspace');
+        window.renderStudentWorkspace();
+    };
+
+    function checkStudentCardsUpdate() {
+        const group = state.groups.find(g => g.id === state.selectedStudentGroupId);
+        if (!group) return;
+
+        const badge = document.getElementById('st-submit-status-badge');
+        if (group.submitted) {
+            badge.className = "px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500 text-white animate-pulse";
+            badge.innerText = `✓ 已提交成果 (時間: ${group.submitTime})`;
+        } else {
+            badge.className = "px-4 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700";
+            badge.innerText = "⏳ 填寫中 / 尚未提交";
+        }
+
+        if (group.features && group.features.length >= 2) {
+            document.getElementById('st-not-drawn-screen').classList.add('hidden');
+            document.getElementById('st-active-workspace').classList.remove('hidden');
+
+            document.getElementById('st-f1-title').innerText = group.features[0].title;
+            document.getElementById('st-f1-desc').innerText = group.features[0].desc;
+            document.getElementById('st-f1-cat').innerText = group.features[0].category || "規格";
+            document.getElementById('fabe1-spec-title').innerText = group.features[0].title;
+
+            document.getElementById('st-f2-title').innerText = group.features[1].title;
+            document.getElementById('st-f2-desc').innerText = group.features[1].desc;
+            document.getElementById('st-f2-cat').innerText = group.features[1].category || "規格";
+            document.getElementById('fabe2-spec-title').innerText = group.features[1].title;
+        } else {
+            document.getElementById('st-not-drawn-screen').classList.remove('hidden');
+            document.getElementById('st-active-workspace').classList.add('hidden');
+        }
+    }
+
+    window.renderStudentWorkspace = function() {
+        const group = state.groups.find(g => g.id === state.selectedStudentGroupId);
+        if (!group) return;
+
+        document.getElementById('st-group-title').innerText = group.name;
+        checkStudentCardsUpdate();
+
+        if (group.features && group.features.length >= 2) {
+            // Load texts only once on enter to avoid typing disruption
+            document.getElementById('st-fabe1-f').value = group.fabe1.f || '';
+            document.getElementById('st-fabe1-a').value = group.fabe1.a || '';
+            document.getElementById('st-fabe1-b').value = group.fabe1.b || '';
+            document.getElementById('st-fabe1-e').value = group.fabe1.e || '';
+
+            document.getElementById('st-fabe2-f').value = group.fabe2.f || '';
+            document.getElementById('st-fabe2-a').value = group.fabe2.a || '';
+            document.getElementById('st-fabe2-b').value = group.fabe2.b || '';
+            document.getElementById('st-fabe2-e').value = group.fabe2.e || '';
+            
+            document.getElementById('st-c1-inner').classList.remove('card-flipped');
+            document.getElementById('st-c2-inner').classList.remove('card-flipped');
+        }
+    };
+
+    window.autoSaveStudentInput = function() {
+        const group = state.groups.find(g => g.id === state.selectedStudentGroupId);
+        if (!group) return;
+
+        group.fabe1.f = document.getElementById('st-fabe1-f').value;
+        group.fabe1.a = document.getElementById('st-fabe1-a').value;
+        group.fabe1.b = document.getElementById('st-fabe1-b').value;
+        group.fabe1.e = document.getElementById('st-fabe1-e').value;
+
+        group.fabe2.f = document.getElementById('st-fabe2-f').value;
+        group.fabe2.a = document.getElementById('st-fabe2-a').value;
+        group.fabe2.b = document.getElementById('st-fabe2-b').value;
+        group.fabe2.e = document.getElementById('st-fabe2-e').value;
+
+        saveStateToFirebase();
+    };
+
+    window.submitStudentAnswers = function() {
+        const group = state.groups.find(g => g.id === state.selectedStudentGroupId);
+        if (!group) return;
+
+        group.submitted = true;
+        const now = new Date();
+        const minsStr = (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+        const hrsStr = (now.getHours() < 10 ? '0' : '') + now.getHours();
+        group.submitTime = `${hrsStr}:${minsStr}`;
+
+        saveStateToFirebase(true); // force immediate save
+        window.renderStudentWorkspace();
+        
+        confetti({ particleCount: 100, spread: 60, origin: { y: 0.8 } });
+        window.customAlert("✅ 恭喜！您的小組 FABE 銷售提案已成功提交。老師已能在控制塔即時查看！", "提交成功");
+    };
+
+    // --- Teacher Logic ---
+    window.switchTeacherTab = function(tabId) {
+        state.teacherTab = tabId;
+        
+        document.getElementById('t-panel-setup-draw').classList.add('hidden');
+        document.getElementById('t-panel-submissions').classList.add('hidden');
+        document.getElementById('t-panel-cards-editor').classList.add('hidden');
+
+        const btns = {
+            'setup-draw': document.getElementById('btn-t-tab-setup-draw'),
+            'submissions': document.getElementById('btn-t-tab-submissions'),
+            'cards-editor': document.getElementById('btn-t-tab-cards-editor')
+        };
+
+        for (let k in btns) {
+            if (btns[k]) btns[k].className = "text-gray-500 hover:text-brand-dark px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5";
+        }
+        if (btns[tabId]) btns[tabId].className = "bg-white text-brand-dark px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1.5";
+
+        if (tabId === 'setup-draw') {
+            document.getElementById('t-panel-setup-draw').classList.remove('hidden');
+            window.renderTeacherSetupDraw();
+        } else if (tabId === 'submissions') {
+            document.getElementById('t-panel-submissions').classList.remove('hidden');
+            window.renderTeacherSubmissions();
+        } else if (tabId === 'cards-editor') {
+            document.getElementById('t-panel-cards-editor').classList.remove('hidden');
+            window.renderCardsEditorTables();
+        }
+    };
+
+    window.setupQuickGroups = function(count) {
+        window.playSound('click');
+        state.groups = [];
+        for (let i = 1; i <= count; i++) {
+            state.groups.push({
+                id: 'g' + i,
+                name: '第 ' + i + ' 組',
+                features: [],
+                fabe1: { f: '', a: '', b: '', e: '' },
+                fabe2: { f: '', a: '', b: '', e: '' },
+                submitted: false,
+                submitTime: ""
+            });
+        }
+        state.activeGroupIndex = 0;
+        saveStateToFirebase(true);
+        window.renderTeacherSetupDraw();
+        window.showToast(`已快捷建立 ${count} 小組！`, "🎉");
+    };
+
+    window.addNewGroup = function() {
+        window.playSound('click');
+        const num = state.groups.length + 1;
+        state.groups.push({
+            id: 'g' + Date.now(),
+            name: '第 ' + num + ' 組',
+            features: [],
+            fabe1: { f: '', a: '', b: '', e: '' },
+            fabe2: { f: '', a: '', b: '', e: '' },
+            submitted: false,
+            submitTime: ""
+        });
+        saveStateToFirebase(true);
+        window.renderTeacherSetupDraw();
+    };
+
+    window.deleteGroup = async function(idx) {
+        window.playSound('click');
+        if (state.groups.length <= 1) {
+            window.customAlert("必須至少保留一個組別！", "無法刪除", true);
+            return;
+        }
+
+        const isOk = await window.customConfirm(`確定要刪除第 ${idx+1} 組 (${state.groups[idx].name}) 嗎？其相關的抽籤和填寫內容將永久清空！`);
+        if (isOk) {
+            state.groups.splice(idx, 1);
+            if (state.activeGroupIndex >= state.groups.length) {
+                state.activeGroupIndex = state.groups.length - 1;
+            }
+            saveStateToFirebase(true);
+            window.renderTeacherSetupDraw();
+            window.showToast("已刪除該組別！", "🔔");
+        }
+    };
+
+    window.updateGroupName = function(idx, val) {
+        state.groups[idx].name = val.trim() || `第 ${idx+1} 組`;
+        saveStateToFirebase();
+    };
+
+    window.toggleDupFeaturesSetting = function() {
+        state.settings.allowDuplicateFeatures = document.getElementById('set-dup-features').checked;
+        saveStateToFirebase(true);
+    };
+
+    window.renderTeacherSetupDraw = function() {
+        if (state.groups.length === 0) return;
+        const group = state.groups[state.activeGroupIndex];
+
+        document.getElementById('set-dup-features').checked = state.settings.allowDuplicateFeatures;
+
+        const editorContainer = document.getElementById('group-editor-container');
+        editorContainer.innerHTML = '';
+        state.groups.forEach((g, idx) => {
+            const row = document.createElement('div');
+            row.className = "flex items-center gap-2 bg-gray-50/50 p-2 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors";
+            row.innerHTML = `
+                <span class="text-xs text-gray-400 font-bold px-1.5">#${idx+1}</span>
+                <input type="text" value="${g.name}" onchange="updateGroupName(${idx}, this.value)" class="flex-grow bg-transparent border-b border-transparent focus:border-brand-blue font-semibold text-xs py-0.5 focus:outline-none transition-all">
+                <button onclick="deleteGroup(${idx})" class="text-rose-400 hover:text-rose-600 p-1.5 rounded transition-colors" title="刪除">
+                    <i class="fa-regular fa-trash-can"></i>
+                </button>
+            `;
+            editorContainer.appendChild(row);
+        });
+
+        const tabsBox = document.getElementById('play-group-tabs');
+        tabsBox.innerHTML = '';
+        state.groups.forEach((g, idx) => {
+            const isCurrent = idx === state.activeGroupIndex;
+            const hasDrawn = g.features && g.features.length >= 2;
+            const btn = document.createElement('button');
+            btn.onclick = () => {
+                state.activeGroupIndex = idx;
+                saveStateToFirebase();
+                window.renderTeacherSetupDraw();
+            };
+            btn.className = `px-2.5 py-1 text-[10px] font-bold rounded-full shrink-0 transition-all ${
+                isCurrent ? 'bg-brand-blue text-white shadow-sm' : hasDrawn ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`;
+            btn.innerHTML = `${g.name} ${hasDrawn ? '✓' : ''}`;
+            tabsBox.appendChild(btn);
+        });
+
+        document.getElementById('current-group-badge-name').innerText = group.name;
+
+        if (group.features && group.features.length >= 2) {
+            document.getElementById('deck-unopened').classList.add('hidden');
+            document.getElementById('deck-opened').classList.remove('hidden');
+            document.getElementById('btn-redraw').classList.remove('hidden');
+
+            document.getElementById('f1-title').innerText = group.features[0].title;
+            document.getElementById('f1-desc').innerText = group.features[0].desc;
+            document.getElementById('f2-title').innerText = group.features[1].title;
+            document.getElementById('f2-desc').innerText = group.features[1].desc;
+        } else {
+            document.getElementById('deck-unopened').classList.remove('hidden');
+            document.getElementById('deck-opened').classList.add('hidden');
+            document.getElementById('btn-redraw').classList.add('hidden');
+        }
+    };
+
+    function getUsedFeaturesPool() {
+        const used = new Set();
+        state.groups.forEach((g, idx) => {
+            if (idx === state.activeGroupIndex) return;
+            if (g.features && g.features.length) g.features.forEach(f => used.add(f.id));
+        });
+        return used;
+    }
+
+    window.executeDraw = function() {
+        if (state.groups.length === 0) return;
+        const group = state.groups[state.activeGroupIndex];
+        window.playSound('click');
+
+        document.getElementById('deck-unopened').classList.add('hidden');
+        document.getElementById('shuffle-animation-deck').classList.remove('hidden');
+
+        let tickTimes = 0;
+        const ticks = setInterval(() => {
+            window.playSound('shuffle');
+            tickTimes++;
+            if (tickTimes > 8) clearInterval(ticks);
+        }, 150);
+
+        setTimeout(() => {
+            const usedPool = getUsedFeaturesPool();
+            let pool = state.features.filter(f => f.enabled);
+
+            if (!state.settings.allowDuplicateFeatures) pool = pool.filter(f => !usedPool.has(f.id));
+
+            if (pool.length < 2) {
+                clearInterval(ticks);
+                document.getElementById('shuffle-animation-deck').classList.add('hidden');
+                document.getElementById('deck-unopened').classList.remove('hidden');
+                window.customAlert("⚠️ Feature 規格卡剩餘可用數量小於 2 張！請關閉重複排他鎖，或至卡庫啟用更多卡片。", "卡池枯竭", true);
+                return;
+            }
+
+            const selected = [];
+            let tempPool = [...pool];
+            for (let i = 0; i < 2; i++) {
+                const rand = Math.floor(Math.random() * tempPool.length);
+                selected.push(tempPool[rand]);
+                tempPool.splice(rand, 1);
+            }
+
+            group.features = selected;
+            saveStateToFirebase(true);
+            
+            window.playSound('reveal');
+            document.getElementById('shuffle-animation-deck').classList.add('hidden');
+            document.getElementById('deck-opened').classList.remove('hidden');
+
+            window.renderTeacherSetupDraw();
+        }, 1500);
+    };
+
+    window.reDrawCurrentGroup = async function() {
+        const confirmRedraw = await window.customConfirm("⚠️ 確定要重新為該組別抽取規格卡嗎？");
+        if (confirmRedraw) {
+            const group = state.groups[state.activeGroupIndex];
+            group.features = [];
+            saveStateToFirebase(true);
+            window.renderTeacherSetupDraw();
+        }
+    };
+
+    window.prevGroup = function() {
+        window.playSound('click');
+        if (state.activeGroupIndex > 0) state.activeGroupIndex--;
+        else state.activeGroupIndex = state.groups.length - 1;
+        saveStateToFirebase();
+        window.renderTeacherSetupDraw();
+    };
+
+    window.nextGroup = function() {
+        window.playSound('click');
+        if (state.activeGroupIndex < state.groups.length - 1) state.activeGroupIndex++;
+        else state.activeGroupIndex = 0;
+        saveStateToFirebase();
+        window.renderTeacherSetupDraw();
+    };
+
+    window.renderTeacherSubmissions = function() {
+        const container = document.getElementById('t-submissions-container');
+        container.innerHTML = '';
+
+        state.groups.forEach((g, groupIdx) => {
+            const isDrawn = g.features && g.features.length >= 2;
+            let fillCount1 = 0, fillCount2 = 0;
+
+            if (g.fabe1.f.trim()) fillCount1++;
+            if (g.fabe1.a.trim()) fillCount1++;
+            if (g.fabe1.b.trim()) fillCount1++;
+            if (g.fabe1.e.trim()) fillCount1++;
+
+            if (g.fabe2.f.trim()) fillCount2++;
+            if (g.fabe2.a.trim()) fillCount2++;
+            if (g.fabe2.b.trim()) fillCount2++;
+            if (g.fabe2.e.trim()) fillCount2++;
+
+            const avgProgress = Math.round(((fillCount1 + fillCount2) / 8) * 100);
+            const card = document.createElement('div');
+            card.className = "bg-white p-6 rounded-3xl border shadow-sm space-y-4 hover:shadow-md transition-all";
+            
+            let cardHeaderHTML = `
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3">
+                    <div class="flex items-center gap-2">
+                        <h4 class="text-lg font-extrabold text-brand-dark">${g.name}</h4>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded ${g.submitted ? 'bg-emerald-500 text-white animate-pulse' : 'bg-amber-100 text-amber-700'}">
+                            ${g.submitted ? '✓ 學生已提交' : '⏳ 討論撰寫中'}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-400">寫作填寫進度</p>
+                            <p class="text-xs font-bold font-mono text-brand-blue">${avgProgress}% 完成</p>
+                        </div>
+                        <div class="w-16 bg-slate-100 rounded-full h-1.5">
+                            <div class="bg-brand-blue h-1.5 rounded-full" style="width: ${avgProgress}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            let contentsHTML = '';
+            if (!isDrawn) {
+                contentsHTML = `<div class="text-center py-6 text-xs text-gray-400 italic"><i class="fa-solid fa-hourglass-start"></i> 老師尚未為本組抽取任何規格特點。</div>`;
+            } else {
+                contentsHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+                        <div class="space-y-3 bg-slate-50/50 p-4 rounded-2xl border">
+                            <h5 class="font-bold text-brand-blue border-b pb-1.5 text-xs flex items-center justify-between">
+                                <span>🎯 FABE 1: ${g.features[0].title}</span>
+                                <span class="font-mono text-[9px] text-gray-400 bg-white border px-1.5 py-0.5 rounded">${fillCount1}/4 填寫</span>
+                            </h5>
+                            <div class="space-y-2">
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-rose-500 block uppercase">F - Feature 特點:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe1.f || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-amber-500 block uppercase">A - Advantage 優勢:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe1.a || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-emerald-500 block uppercase">B - Benefit 利益:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe1.b || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-sky-500 block uppercase">E - Evidence 證據:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe1.e || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3 bg-slate-50/50 p-4 rounded-2xl border">
+                            <h5 class="font-bold text-indigo-700 border-b pb-1.5 text-xs flex items-center justify-between">
+                                <span>🎯 FABE 2: ${g.features[1].title}</span>
+                                <span class="font-mono text-[9px] text-gray-400 bg-white border px-1.5 py-0.5 rounded">${fillCount2}/4 填寫</span>
+                            </h5>
+                            <div class="space-y-2">
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-rose-500 block uppercase">F - Feature 特點:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe2.f || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-amber-500 block uppercase">A - Advantage 優勢:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe2.a || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-emerald-500 block uppercase">B - Benefit 利益:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe2.b || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                                <div class="bg-white p-2.5 rounded border border-gray-100"><span class="font-bold text-[10px] text-sky-500 block uppercase">E - Evidence 證據:</span><p class="text-[11px] text-gray-600 mt-0.5 whitespace-pre-wrap">${g.fabe2.e || '<span class="italic text-gray-300">無填寫</span>'}</p></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = cardHeaderHTML + contentsHTML;
+            container.appendChild(card);
+        });
+    };
+
+    window.triggerResetConfirm = async function() {
+        const confirmReset = await window.customConfirm("⚠️ 警告：這將徹底清空全體小組的「抽籤卡片」與「學生的雙份 FABE 填寫與提交成果」！本動作無法還原！");
+        if (confirmReset) {
+            state.groups.forEach(g => {
+                g.features = [];
+                g.fabe1 = { f: '', a: '', b: '', e: '' };
+                g.fabe2 = { f: '', a: '', b: '', e: '' };
+                g.submitted = false;
+                g.submitTime = "";
+            });
+            state.activeGroupIndex = 0;
+            window.resetTimer();
+            saveStateToFirebase(true);
+            window.renderTeacherSubmissions();
+            window.showToast("全體小組填寫成果已被重置清空！", "🔥");
+        }
+    };
+
+    // --- Cards Management ---
+    window.updateFeatureField = function(id, field, value) {
+        const item = state.features.find(f => f.id === id);
+        if (item) {
+            item[field] = value;
+            saveStateToFirebase();
+        }
+    };
+
+    window.renderCardsEditorTables = function() {
+        const featuresTbody = document.getElementById('features-tbody');
+        featuresTbody.innerHTML = '';
+        state.features.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+            tr.innerHTML = `
+                <td class="p-2 border-b">
+                    <input type="text" value="${f.title}" onchange="updateFeatureField('${f.id}', 'title', this.value)" class="w-full bg-transparent p-1 focus:bg-white border border-transparent focus:border-slate-300 rounded focus:outline-none font-bold">
+                </td>
+                <td class="p-2 border-b">
+                    <textarea onchange="updateFeatureField('${f.id}', 'desc', this.value)" class="w-full bg-transparent p-1 focus:bg-white border border-transparent focus:border-slate-300 rounded focus:outline-none h-12 leading-tight">${f.desc}</textarea>
+                </td>
+                <td class="p-2 border-b">
+                    <input type="text" value="${f.category}" onchange="updateFeatureField('${f.id}', 'category', this.value)" class="w-full bg-transparent p-1 focus:bg-white border border-transparent focus:border-slate-300 rounded focus:outline-none">
+                </td>
+                <td class="p-2 border-b text-center">
+                    <button onclick="toggleCardStatus('${f.id}')" class="px-2.5 py-1 rounded text-[10px] font-bold ${f.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                        ${f.enabled ? '啟用 ON' : '禁用 OFF'}
+                    </button>
+                </td>
+                <td class="p-2 border-b text-center">
+                    <button onclick="deleteCardRow('${f.id}')" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded transition-all">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            featuresTbody.appendChild(tr);
+        });
+    };
+
+    window.toggleCardStatus = function(id) {
+        window.playSound('click');
+        const item = state.features.find(x => x.id === id);
+        if (item) {
+            item.enabled = !item.enabled;
+            saveStateToFirebase(true);
+            window.renderCardsEditorTables();
+        }
+    };
+
+    window.deleteCardRow = async function(id) {
+        window.playSound('click');
+        const confirmDel = await window.customConfirm("確定要刪除這張特色卡嗎？建議可以直接將狀態切換為 [禁用 OFF] 即可封存。");
+        if (confirmDel) {
+            state.features = state.features.filter(f => f.id !== id);
+            saveStateToFirebase(true);
+            window.renderCardsEditorTables();
+            window.showToast("卡片已刪除", "🔔");
+        }
+    };
+
+    window.addNewFeatureCardRow = function() {
+        window.playSound('click');
+        const id = 'f' + Date.now();
+        state.features.push({
+            id, title: '全新硬體特點亮點', desc: '填入 MacBook Neo 產品客觀的組成規格細節說明...', category: '效能', enabled: true
+        });
+        saveStateToFirebase(true);
+        window.renderCardsEditorTables();
+        setTimeout(() => { document.getElementById('features-tbody').lastElementChild.scrollIntoView({ behavior: 'smooth' }); }, 100);
+    };
+
+    window.restoreDefaultPresets = async function() {
+        const confirmRestore = await window.customConfirm("⚠️ 確定要恢復預設規格特色卡片庫嗎？這將會清空所有自訂的卡片！");
+        if (confirmRestore) {
+            state.features = [...DEFAULT_FEATURES_DATA];
+            saveStateToFirebase(true);
+            window.showToast("已成功重置回預設 MacBook Neo 規格卡庫！", "🔔");
+            window.renderCardsEditorTables();
+        }
+    };
+
+    // --- Timer Logic ---
+    window.updateTimerLabel = function(minutes) {
+        document.getElementById('timer-val-label').innerText = (minutes < 10 ? '0' : '') + minutes + ":00";
+        state.settings.timerDuration = minutes * 60;
+        saveStateToFirebase();
+    };
+
+    window.toggleTimer = function() {
+        window.playSound('click');
+        const timerObj = state.timer;
+        const toggleBtn = document.getElementById('btn-timer-toggle');
+
+        if (timerObj.isRunning) {
+            clearInterval(timerObj.intervalId);
+            timerObj.isRunning = false;
+            toggleBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            document.getElementById('header-timer-widget').classList.add('hidden');
+        } else {
+            timerObj.isRunning = true;
+            toggleBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+            if (state.view === 'teacher-workspace' || state.view === 'student-workspace') {
+                document.getElementById('header-timer-widget').classList.remove('hidden');
+            }
+
+            timerObj.intervalId = setInterval(() => {
+                timerObj.secondsLeft--;
+                window.renderTimerText();
+
+                if (timerObj.secondsLeft <= 0) {
+                    clearInterval(timerObj.intervalId);
+                    timerObj.isRunning = false;
+                    toggleBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+                    window.playSound('alarm');
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                    document.getElementById('alarm-banner').classList.remove('hidden');
+                    document.getElementById('header-timer-widget').classList.add('hidden');
+                }
+            }, 1000);
+        }
+    };
+
+    window.resetTimer = function() {
+        window.playSound('click');
+        const timerObj = state.timer;
+        clearInterval(timerObj.intervalId);
+        timerObj.isRunning = false;
+        timerObj.secondsLeft = state.settings.timerDuration;
+        document.getElementById('btn-timer-toggle').innerHTML = '<i class="fa-solid fa-play"></i>';
+        document.getElementById('alarm-banner').classList.add('hidden');
+        document.getElementById('header-timer-widget').classList.add('hidden');
+        window.renderTimerText();
+    };
+
+    window.adjustTimerMinutes = function(offset) {
+        window.playSound('click');
+        const newSecs = state.timer.secondsLeft + (offset * 60);
+        if (newSecs > 0) {
+            state.timer.secondsLeft = newSecs;
+            window.renderTimerText();
+        }
+    };
+
+    window.renderTimerText = function() {
+        const mins = Math.floor(state.timer.secondsLeft / 60);
+        const secs = state.timer.secondsLeft % 60;
+        const valStr = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        document.getElementById('arena-timer-txt').innerText = valStr;
+        document.getElementById('header-timer-txt').innerText = valStr;
+    };
+
+    // --- Import / Export ---
+    window.openJSONModal = function() { window.playSound('click'); document.getElementById('modal-import').classList.remove('hidden'); };
+    window.closeJSONModal = function() { window.playSound('click'); document.getElementById('modal-import').classList.add('hidden'); };
+
+    window.switchImportType = function(type) {
+        window.playSound('click');
+        state.importType = type;
+        const btnExcel = document.getElementById('btn-import-tab-excel');
+        const btnJson = document.getElementById('btn-import-tab-json');
+        const blockExcel = document.getElementById('import-block-excel');
+        const blockJson = document.getElementById('import-block-json');
+
+        if (type === 'excel') {
+            btnExcel.className = "px-4 py-2 border-b-2 border-brand-blue font-bold text-xs text-brand-blue";
+            btnJson.className = "px-4 py-2 font-bold text-xs text-gray-400";
+            blockExcel.classList.remove('hidden'); blockJson.classList.add('hidden');
+        } else {
+            btnExcel.className = "px-4 py-2 font-bold text-xs text-gray-400";
+            btnJson.className = "px-4 py-2 border-b-2 border-brand-blue font-bold text-xs text-brand-blue";
+            blockExcel.classList.add('hidden'); blockJson.classList.remove('hidden');
+        }
+    };
+
+    window.triggerJSONBackupDownload = function() {
+        window.playSound('click');
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ features: state.features }, null, 2));
+        const dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", `fabe_neo_backup_${Date.now()}.json`);
+        dlAnchorElem.click();
+        window.showToast("已成功產生備份 JSON 檔案！", "💾");
+    };
+
+    window.executeImport = function() {
+        window.playSound('click');
+        if (state.importType === 'json') {
+            const txt = document.getElementById('import-json-textarea').value.trim();
+            if (!txt) return window.customAlert("請貼上有效的備份 JSON 代碼！", "無效輸入", true);
+            try {
+                const parsed = JSON.parse(txt);
+                if (parsed.features) {
+                    state.features = parsed.features;
+                    saveStateToFirebase(true);
+                    window.renderCardsEditorTables();
+                    window.closeJSONModal();
+                    window.showToast("規格資料庫已從 JSON 完美覆蓋導入！", "🎉");
+                } else {
+                    window.customAlert("⚠️ 錯誤的備份格式，JSON 內缺少 [features] 陣列。", "結構錯誤", true);
+                }
+            } catch (e) {
+                window.customAlert("⚠️ 備份資料解析失敗，請確認代碼格式無誤！" + e.message, "解析失敗", true);
+            }
+        } else {
+            const txt = document.getElementById('import-excel-textarea').value.trim();
+            if (!txt) return window.customAlert("請貼上複製的 Excel 儲存格或 CSV 列！", "無效輸入", true);
+            const rows = txt.split('\n');
+            let addedCount = 0;
+
+            rows.forEach(row => {
+                if (!row.trim()) return;
+                let cols = row.includes('\t') ? row.split('\t') : row.split(',');
+                if (cols.length >= 2) {
+                    state.features.push({
+                        id: 'f' + Date.now() + Math.random().toString(36).substr(2, 4),
+                        title: cols[0].trim(),
+                        desc: cols[1].trim().replace(/\\n/g, '\n'),
+                        category: cols[2] ? cols[2].trim() : '通用',
+                        enabled: true
+                    });
+                    addedCount++;
+                }
+            });
+
+            if (addedCount > 0) {
+                saveStateToFirebase(true);
+                window.renderCardsEditorTables();
+                window.closeJSONModal();
+                window.showToast(`已成功從 Excel 批量導入 ${addedCount} 筆卡片！`, "🎉");
+            } else {
+                window.customAlert("未偵測到任何有效的表格欄位，請確認貼上內容是否包含 標題 與 描述 欄位並以逗號或 TAB 隔開！", "導入失敗", true);
+            }
+        }
+    };
+
+    // --- UI Helpers & Init ---
+    window.flipCard = function(innerId) {
+        window.playSound('click');
+        const element = document.getElementById(innerId);
+        if (element) element.classList.toggle('card-flipped');
+    };
+
+    window.onload = function () {
+        window.initData();
+        window.navigateTo('home');
+    };
+</script>
+
+</body>
+</html>
