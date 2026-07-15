@@ -779,19 +779,20 @@
 <!-- 1. 載入 Firebase 核心 SDK (請放在 </body> 標籤之前) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
 
 <!-- 2. 這是你的初始化設定檔，請建立一個名為 firebase-init.js 的檔案放進去 -->
 <script src="firebase-init.js"></script>
-    
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : fallbackConfig;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'fabe-sales-challenge';
-    
+<script>
+    const appId = 'fabe-sales-challenge';
+
     let app, auth, db;
     try {
-        app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
+        app = firebase.app();
+        auth = firebase.auth();
+        db = firebase.firestore();
+        console.log("Firebase Auth 與 Firestore 初始化成功");
     } catch (e) {
         console.error("Firebase 初始化失敗，請檢查設定", e);
     }
@@ -989,15 +990,15 @@
         
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
+                await auth.signInWithCustomToken(__initial_auth_token);
             } else {
-                await signInAnonymously(auth);
+                await auth.signInAnonymously();
             }
         } catch(e) {
             console.error("Auth error:", e);
         }
 
-        onAuthStateChanged(auth, (user) => {
+        auth.onAuthStateChanged((user) => {
             if (user) {
                 window.currentUser = user;
                 setupFirestoreListener();
@@ -1007,9 +1008,9 @@
 
     function setupFirestoreListener() {
         if (!window.currentUser || !db) return;
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'global');
+        const docRef = db.doc(`artifacts/${appId}/public/data/appState/global`);
         
-        onSnapshot(docRef, (documentSnapshot) => {
+        docRef.onSnapshot((documentSnapshot) => {
             if (documentSnapshot.exists()) {
                 const data = documentSnapshot.data();
                 state.features = data.features || DEFAULT_FEATURES_DATA;
@@ -1042,9 +1043,9 @@
         if (!window.currentUser || !db) return;
         
         const executeSave = async () => {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'global');
+            const docRef = db.doc(`artifacts/${appId}/public/data/appState/global`);
             try {
-                await setDoc(docRef, {
+                await docRef.set({
                     features: state.features,
                     settings: state.settings,
                     groups: state.groups,
