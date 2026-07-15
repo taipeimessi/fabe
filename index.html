@@ -1045,7 +1045,7 @@
         const docRef = db.doc(`artifacts/${appId}/public/data/appState/global`);
         
         docRef.onSnapshot((documentSnapshot) => {
-            if (documentSnapshot.exists()) {
+            if (documentSnapshot.exists) {
                 const data = documentSnapshot.data();
                 state.features = data.features || DEFAULT_FEATURES_DATA;
                 state.settings = data.settings || { allowDuplicateFeatures: false, timerDuration: 480 };
